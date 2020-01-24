@@ -4,16 +4,22 @@
 
 当我们需要在本地开发时，更希望能够有一个开箱即用又可以方便定制的分布式开发环境，这样才能对Kubernetes本身和应用进行更好的测试。现在我们使用[Vagrant](https://www.vagrantup.com/)和[VirtualBox](https://www.virtualbox.org/wiki/Downloads)来创建一个这样的环境。
 
-**注意**：kube-proxy使用ipvs模式。
+**注意**：因为使用虚拟机创建分布式Kubernetes集群比较耗费资源，所以我又仅使用Docker创建Standalone的Kubernetes的轻量级[Cloud Native Sandbox](https://github.com/rootsongjc/cloud-native-sandbox)。
+
+## Demo
+
+点击下面的图片观看视频。
+
+[![观看视频](https://ae01.alicdn.com/kf/U4416321c10a0444a9f12dd7f5bf722c9p.jpg)](https://www.bilibili.com/video/av39514214/)
 
 ## 准备环境
 
 需要准备以下软件和环境：
 
 - 8G以上内存
-- Vagrant 2.0+
-- VirtualBox 5.0 +
-- 提前下载Kubernetes 1.9以上版本（支持最新的1.11.0）的release压缩包
+- Vagrant 2.0+（推荐使用 v2.0.2 版本）
+- VirtualBox 5.2（不支持 5.2 以上的版本）
+- 提前下载Kubernetes 1.9以上版本（支持最新的1.15.0）的release压缩包
 - Mac/Linux，**Windows不完全支持，仅在windows10下通过**
 
 ## 集群
@@ -59,10 +65,11 @@ Kubernetes service IP范围：10.254.0.0/16
 ```bash
 git clone https://github.com/rootsongjc/kubernetes-vagrant-centos-cluster.git
 cd kubernetes-vagrant-centos-cluster
-wget https://storage.googleapis.com/kubernetes-release/release/v1.11.0/kubernetes-server-linux-amd64.tar.gz
 ```
 
-注：您可以在[这里](https://kubernetes.io/docs/imported/release/notes/)找到Kubernetes的发行版下载地址。
+**注意**：如果您是第一次运行该部署程序，那么可以直接执行下面的命令，它将自动帮你下载 Kubernetes 安装包，下一次你就不需要自己下载了，另外您也可以在[这里](https://kubernetes.io/docs/imported/release/notes/)找到Kubernetes的发行版下载地址，下载 Kubernetes发行版后重命名为`kubernetes-server-linux-amd64.tar.gz`，并移动到该项目的根目录下。
+
+因为该项目是使用 NFS 的方式挂载到虚拟机的 `/vagrant` 目录中的，所以在安装 NFS 的时候需要您输入密码授权。
 
 使用vagrant启动集群。
 
@@ -82,6 +89,11 @@ vagrant box add CentOS-7-x86_64-Vagrant-1801_02.VirtualBox.box --name centos/7
 ````
 
 这样下次运行`vagrant up`的时候就会自动读取本地的`centos/7` box而不会再到网上下载。
+
+#### Mac 安装说明
+
+在偏好设置 -> 安全性和隐私 -> 通用，点击被阻止的程序。
+然后在命令行终端中执行 `sudo "/Library/Application Support/VirtualBox/LaunchDaemons/VirtualBoxStartup.sh" restart `， 再执行 `vagrant up` 启动。
 
 **Windows 安装特别说明**
 
@@ -146,7 +158,7 @@ dos2unix dns-deploy.sh
 要想在本地直接操作Kubernetes集群，需要在你的电脑里安装`kubectl`命令行工具，对于Mac用户执行以下步骤：
 
 ```bash
-wget https://storage.googleapis.com/kubernetes-release/release/v1.11.0/kubernetes-client-darwin-amd64.tar.gz
+wget https://storage.googleapis.com/kubernetes-release/release/v1.15.0/kubernetes-client-darwin-amd64.tar.gz
 tar xvf kubernetes-client-darwin-amd64.tar.gz && cp kubernetes/client/bin/kubectl /usr/local/bin
 ```
 
@@ -292,6 +304,7 @@ kubectl apply -f addon/istio/istio-ingress.yaml
 kubectl label namespace default istio-injection=enabled
 kubectl apply -n default -f yaml/istio-bookinfo/bookinfo.yaml
 kubectl apply -n default -f yaml/istio-bookinfo/bookinfo-gateway.yaml
+kubectl apply -n default -f yaml/istio-bookinfo/destination-rule-all.yaml
 ```
 
 在您自己的本地主机的`/etc/hosts`文件中增加如下配置项。
@@ -300,6 +313,7 @@ kubectl apply -n default -f yaml/istio-bookinfo/bookinfo-gateway.yaml
 172.17.8.102 grafana.istio.jimmysong.io
 172.17.8.102 prometheus.istio.jimmysong.io
 172.17.8.102 servicegraph.istio.jimmysong.io
+172.17.8.102 jaeger-query.istio.jimmysong.io
 ```
 
 我们可以通过下面的URL地址访问以上的服务。
@@ -308,10 +322,10 @@ kubectl apply -n default -f yaml/istio-bookinfo/bookinfo-gateway.yaml
 | ------------ | ------------------------------------------------------------ |
 | grafana      | http://grafana.istio.jimmysong.io                            |
 | servicegraph | <http://servicegraph.istio.jimmysong.io/dotviz>, <http://servicegraph.istio.jimmysong.io/graph>,<http://servicegraph.istio.jimmysong.io/force/forcegraph.html> |
-| tracing      | http://172.17.8.101:31888                                    |
+| tracing      | http://jaeger-query.istio.jimmysong.io                       |
 | productpage  | http://172.17.8.101:31380/productpage                        |
 
-详细信息请参阅 https://istio.io/docs/guides/bookinfo.html
+详细信息请参阅：https://istio.io/zh/docs/examples/bookinfo/
 
 ![Bookinfo Demo](images/bookinfo-demo.gif)
 
@@ -346,7 +360,7 @@ Kiali是一个用于提供Istio service mesh观察性的项目，更多信息请
 kubectl apply -n istio-system -f addon/kiali
 ```
 
-Kiali web地址：http://172.17.8.101:31439
+Kiali web地址：http://172.17.8.101:32439
 
 用户名/密码：admin/admin
 

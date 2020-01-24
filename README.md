@@ -2,7 +2,15 @@
 
 [使用Vagrant和VirtualBox在本地搭建分布式Kubernetes集群和Istio Service Mesh - 中文](README-cn.md)
 
-Setting up a Kubernetes cluster and istio service mesh with `vagrantfile` which consists of 1 master(also as node) and 3 nodes. You don't have to create complicated CA files or configuration.
+Setting up a Kubernetes cluster and Istio service mesh with `vagrantfile` which consists of 1 master(also as node) and 3 nodes. You don't have to create complicated CA files or configuration.
+
+**Note**: Because of using virtual machines to setup distributed Kubernetes cluster will bring high load on your computer, so I created the lightweight [Cloud Native Sandbox](https://github.com/rootsongjc/cloud-native-sandbox) using Docker to setup a standalone Kubernetes.
+
+## Demo
+
+Click the following image to watch the video.
+
+[![Watch the video](https://img.youtube.com/vi/26kbaZxcB4A/maxresdefault.jpg)](https://youtu.be/26kbaZxcB4A)
 
 ### Why not use kubeadm?
 
@@ -10,7 +18,7 @@ Because I want to setup the etcd, apiserver, controller and scheduler without do
 
 ### Architecture
 
-We will create a Kubernetes 1.11.0 cluster with 3 nodes which contains the components below:
+We will create a Kubernetes 1.15.0 cluster with 3 nodes which contains the components below:
 
 | IP           | Hostname | Componets                                |
 | ------------ | -------- | ---------------------------------------- |
@@ -31,11 +39,12 @@ The container network range is `170.33.0.0/16` owned by flanneld with `host-gw` 
 ### Prerequisite
 
 * Host server with 8G+ mem(More is better), 60G disk, 8 core cpu at lease
-* Vagrant 2.0+
-* VirtualBox 5.0+
-* Kubernetes 1.9+ (support the latest version 1.11.0)
+* **Vagrant 2.0+（2.0.2 recommended）**
+* **VirtualBox 5.2 (5.2+ is not supported)**
+* Kubernetes 1.9+ (support the latest version 1.15.0)
 * Across GFW to download the kubernetes files (For China users only)
 * MacOS/Linux (**Windows is not supported completely**)
+* NFS Server Package 
 
 ### Support Add-ons
 
@@ -56,15 +65,17 @@ The container network range is `170.33.0.0/16` owned by flanneld with `host-gw` 
 
 #### Setup
 
-Clone this repo into your local machine and download kubernetes binary release first and move them into  the root directory of this repo.
+Clone this repo into your local machine and download kubernetes binary release first and move them into the root directory of this repo (GitBash for the Windows must be run as Administrator to install ```vagrant-winnfsd``` plugin).
 
 ```bash
+vagrant plugin install vagrant-winnfsd
 git clone https://github.com/rootsongjc/kubernetes-vagrant-centos-cluster.git
 cd kubernetes-vagrant-centos-cluster
-wget https://storage.googleapis.com/kubernetes-release/release/v1.11.0/kubernetes-server-linux-amd64.tar.gz
 ```
 
-Note: you can find download address of the Kubernetes releases [here](https://kubernetes.io/docs/imported/release/notes/).
+**Note**: If this your first time to setup Kubernetes cluster with vagrant, just skip the above step and run the following command, it will download Kubernetes release automatically for you and no need to download the release next time. You can find the download address the Kubernetes releases [here](https://kubernetes.io/docs/imported/release/notes/). Download the release of version you wanted, move it to the root of this repo, rename it to `kubernetes-server-linux-amd64.tar.gz` then the `install.sh` script will skip the download step.
+
+As this repo folder is mounted to `/vagrant` with NFS in virtual machines, you may be required to enter a password to for administrator privileges during the installation.
 
 Set up Kubernetes cluster with vagrant.
 
@@ -73,8 +84,6 @@ vagrant up
 ```
 
 Wait about 10 minutes the kubernetes cluster will be setup automatically.
-
-**Note**
 
 If you have difficult to vagrant up the cluster because of have no way to downlaod the `centos/7` box, you can download the box and add it first.
 
@@ -87,36 +96,22 @@ vagrant box add CentOS-7-x86_64-Vagrant-1801_02.VirtualBox.box --name centos/7
 
 The next time you run `vagrant up`, vagrant will import the local box automatically.
 
-**For Windows**
+#### Note for Mac
 
-While running `vagrant up` in Windows, you will see the following output:
+VirtualBox may be blocked by Mac's security limit.
+Go to `System Preferences` - `Security & Privacy` - `Gerneral` click the blocked app and unblock it.
 
-```bash
-G:\code\kubernetes-vagrant-centos-cluster>vagrant up
-Bringing machine 'node1' up with 'virtualbox' provider...
-Bringing machine 'node2' up with 'virtualbox' provider...
-Bringing machine 'node3' up with 'virtualbox' provider...
-==> node1: Importing base box 'centos/7'...
-==> node1: Matching MAC address for NAT networking...
-==> node1: Setting the name of the VM: node1
-==> node1: Clearing any previously set network interfaces...
-==> node1: Specific bridge 'en0: Wi-Fi (AirPort)' not found. You may be asked to specify
-==> node1: which network to bridge to.
-==> node1: Available bridged network interfaces:
-1) Realtek PCIe GBE Family Controller
-2) TAP-Windows Adapter V9
-==> node1: When choosing an interface, it is usually the one that is
-==> node1: being used to connect to the internet.
-    node1: Which interface should the network bridge to?
-    node1: Which interface should the network bridge to?
-```
+Run  `sudo "/Library/Application Support/VirtualBox/LaunchDaemons/VirtualBoxStartup.sh" restart` in terminal and then `vagrant up`.
 
-Press `1` to continue. (Choose the corresponding network interface for node2 and node3)
+#### Note for Windows
 
-You will see these output while node3 is going to be complete:
+- The project will run some bash script under the VirtualMachines. These scripts line ending need to be in LF. Git for windows set ```core.autocrlf``` true by default at the installation time. When you clone this project repository, this parameter (set to true) ask git to change all line ending to CRLF. This behavior need to be changed before cloning the repository (or after for each files by hand). We recommand to turn this to off by running ```git config --global core.autocrlf false``` and ```git config --global core.eol lf``` before cloning. Then, after cloning, do not forget to turn the behavior back if you want to run other windows projects: ```git config --global core.autocrlf true``` and ```git config --global core.eol crlf```.
+
+
+If you have executed the previous git global configuration then, you will not see these output while node3 is going to be complete:
 
 ```bash
-node3: Created symlink from /etc/systemd/system/multi-user.target.wants/kubelet.service to /usr/lib/systemd/system/kubelet.service.
+    node3: Created symlink from /etc/systemd/system/multi-user.target.wants/kubelet.service to /usr/lib/systemd/system/kubelet.service.
     node3: Created symlink from /etc/systemd/system/multi-user.target.wants/kube-proxy.service to /usr/lib/systemd/system/kube-proxy.service.
     node3: deploy coredns
     node3: /tmp/vagrant-shell: ./dns-deploy.sh: /bin/bash^M: bad interpreter: No such file or directory
@@ -145,12 +140,12 @@ There are 3 ways to access the kubernetes cluster.
 
 **local**
 
-In order to manage the cluster on local you should Install `kubectl` command line tool first.
+In order to manage the cluster on local you should Install `kubectl` command line tool first(But, you don't need to do it manual because of ```install.sh``` script itself do this)
 
 Go to [Kubernetes release notes](https://kubernetes.io/docs/imported/release/notes/), download the client binaries, unzip it and then move `kubectl`  to your `$PATH` folder, for MacOS:
 
 ```bash
-wget https://storage.googleapis.com/kubernetes-release/release/v1.11.0/kubernetes-client-darwin-amd64.tar.gz
+wget https://storage.googleapis.com/kubernetes-release/release/v1.15.0/kubernetes-client-darwin-amd64.tar.gz
 tar xvf kubernetes-client-darwin-amd64.tar.gz && cp kubernetes/client/bin/kubectl /usr/local/bin
 ```
 
@@ -165,12 +160,13 @@ We recommend you fellow this way.
 
 **VM**
 
-Login to the virtual machine for dubuging. In most situations, you have no need to login the VMs.
+Login to the virtual machine for debuging. In most situations, you have no need to login the VMs.
 
 ```bash
 vagrant ssh node1
 sudo -i
 kubectl get nodes
+kubectl get pods --namespace=kube-system
 ```
 
 **Kubernetes dashboard**
@@ -214,7 +210,7 @@ Refresh the browser and click `Advance`, skip it. You will see the dashboard pag
 Run this command on your local machine.
 
 ```bash
-kubectl apply -f addon/heapster/
+kubectl apply -f /vagrant/addon/heapster/
 ```
 
 Append the following item to your local `/etc/hosts` file.
@@ -232,7 +228,7 @@ Open the URL in browser: <http://grafana.jimmysong.io>
 Run this command on your local machine.
 
 ```bash
-kubectl apply -f addon/traefik-ingress
+kubectl apply -f /vagrant/addon/traefik-ingress
 ```
 
 Append the following item to your  local file  `/etc/hosts`.
@@ -250,7 +246,7 @@ Traefik UI URL: <http://traefik.jimmysong.io>
 Run this command on your local machine.
 
 ```bash
-kubectl apply -f addon/efk/
+kubectl apply -f /vagrant/addon/efk/
 ```
 
 **Note**: Powerful CPU and memory allocation required. At least 4G per virtual machine.
@@ -260,7 +256,7 @@ kubectl apply -f addon/efk/
 Run this command on your local machine.
 
 ```bash
-hack/deploy-helm.sh
+/vagrant/hack/deploy-helm.sh
 ```
 
 ### Service Mesh
@@ -274,14 +270,14 @@ Go to [Istio release](https://github.com/istio/istio/releases) to download the b
 ```bash
 wget https://github.com/istio/istio/releases/download/1.0.0/istio-1.0.0-osx.tar.gz
 tar xvf istio-1.0.0-osx.tar.gz
-mv bin/istioctl /usr/local/bin/
+mv istio-1.0.0/bin/istioctl /usr/local/bin/
 ```
 
 Deploy istio into Kubernetes:
 
 ```bash
-kubectl apply -f addon/istio/istio-demo.yaml
-kubectl apply -f addon/istio/istio-ingress.yaml
+kubectl apply -f /vagrant/addon/istio/istio-demo.yaml
+kubectl apply -f /vagrant/addon/istio/istio-ingress.yaml
 ```
 
 **Run sample**
@@ -290,8 +286,9 @@ We will let the sidecars be auto injected.
 
 ```bash
 kubectl label namespace default istio-injection=enabled
-kubectl apply -n default -f yaml/istio-bookinfo/bookinfo.yaml
-kubectl apply -n default -f yaml/istio-bookinfo/bookinfo-gateway.yaml
+kubectl apply -n default -f /vagrant/yaml/istio-bookinfo/bookinfo.yaml
+kubectl apply -n default -f /vagrant/yaml/istio-bookinfo/bookinfo-gateway.yaml
+kubectl apply -n default -f /vagrant/yaml/istio-bookinfo/destination-rule-all.yaml
 ```
 
 Add the following items into the file  `/etc/hosts` of your local machine.
@@ -300,6 +297,7 @@ Add the following items into the file  `/etc/hosts` of your local machine.
 172.17.8.102 grafana.istio.jimmysong.io
 172.17.8.102 prometheus.istio.jimmysong.io
 172.17.8.102 servicegraph.istio.jimmysong.io
+172.17.8.102 jaeger-query.istio.jimmysong.io
 ```
 
 We can see the services from the following URLs.
@@ -308,10 +306,10 @@ We can see the services from the following URLs.
 | ------------ | ------------------------------------------------------------ |
 | grafana      | http://grafana.istio.jimmysong.io                            |
 | servicegraph | <http://servicegraph.istio.jimmysong.io/dotviz>, <http://servicegraph.istio.jimmysong.io/graph>,<http://servicegraph.istio.jimmysong.io/force/forcegraph.html> |
-| tracing      | http://172.17.8.101:31888                                    |
+| tracing      | http://jaeger-query.istio.jimmysong.io                       |
 | productpage  | http://172.17.8.101:31380/productpage                        |
 
-More detail see https://istio.io/docs/guides/bookinfo.html
+More detail see https://istio.io/docs/examples/bookinfo/
 
 ![Bookinfo Demo](images/bookinfo-demo.gif)
 
@@ -323,7 +321,7 @@ Run the following commands in your local machine.
 
 ```bash
 # Deploy vistio via kubectl
-kubectl -n default apply -f addon/vistio/
+kubectl -n default apply -f /vagrant/addon/vistio/
 
 # Expose vistio-api
 kubectl -n default port-forward $(kubectl -n default get pod -l app=vistio-api -o jsonpath='{.items[0].metadata.name}') 9091:9091 &
@@ -345,7 +343,7 @@ Kiali is a project to help observability for the Istio service mesh, see [https
 Run the following commands in your local machine.
 
 ```bash
-kubectl apply -n istio-system -f addon/kiali
+kubectl apply -n istio-system -f /vagrant/addon/kiali
 ```
 
 Kiali web: http://172.17.8.101:32439
@@ -363,7 +361,7 @@ User/password: admin/admin
 Run the following commands in your local machine.
 
 ```bash
-kubectl apply -f addon/weave-scope
+kubectl apply -f /vagrant/addon/weave-scope
 ```
 
 Add a record on your local  `/etc/hosts`.
